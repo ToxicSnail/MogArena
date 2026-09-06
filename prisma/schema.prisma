@@ -1,0 +1,136 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PhotoSource {
+  USER_UPLOAD
+  EXTERNAL_IMPORT
+  SEED
+}
+
+enum BattleStatus {
+  ACTIVE
+  CLOSED
+  CANCELLED
+}
+
+enum ImportedProfileStatus {
+  VALID_PHOTO
+  NO_PHOTO
+  PLACEHOLDER
+  NOT_FOUND
+  INVALID_RESPONSE
+  ERROR
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique @db.VarChar(30)
+  email        String?  @unique @db.VarChar(320)
+  passwordHash String?
+  displayName  String?  @db.VarChar(80)
+  bio          String?  @db.VarChar(500)
+  avatarUrl    String?
+  rating       Int      @default(1000)
+  wins         Int      @default(0)
+  losses       Int      @default(0)
+  isImported   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  photos          Photo[]
+  battlesAsA      Battle[]         @relation("ParticipantA")
+  battlesAsB      Battle[]         @relation("ParticipantB")
+  votes           Vote[]           @relation("Voter")
+  receivedVotes   Vote[]           @relation("SelectedUser")
+  importedProfile ImportedProfile?
+
+  @@index([rating(sort: Desc), id])
+  @@index([displayName])
+  @@index([createdAt])
+}
+
+model Photo {
+  id               String      @id @default(cuid())
+  userId           String
+  url              String
+  thumbnailUrl     String
+  source           PhotoSource
+  sourceExternalId String?
+  contentHash      String?
+  active           Boolean     @default(true)
+  createdAt        DateTime    @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  battlesAsA Battle[] @relation("PhotoA")
+  battlesAsB Battle[] @relation("PhotoB")
+
+  @@unique([source, sourceExternalId, contentHash])
+  @@index([active, createdAt])
+  @@index([userId, active])
+}
+
+model Battle {
+  id                String       @id @default(cuid())
+  participantAId    String
+  participantBId    String
+  photoAId          String
+  photoBId          String
+  normalizedPairKey String
+  status            BattleStatus @default(ACTIVE)
+  votesA            Int          @default(0)
+  votesB            Int          @default(0)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  participantA User   @relation("ParticipantA", fields: [participantAId], references: [id], onDelete: Restrict)
+  participantB User   @relation("ParticipantB", fields: [participantBId], references: [id], onDelete: Restrict)
+  photoA       Photo  @relation("PhotoA", fields: [photoAId], references: [id], onDelete: Restrict)
+  photoB       Photo  @relation("PhotoB", fields: [photoBId], references: [id], onDelete: Restrict)
+  votes        Vote[]
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([normalizedPairKey, createdAt(sort: Desc)])
+  @@index([participantAId, createdAt(sort: Desc)])
+  @@index([participantBId, createdAt(sort: Desc)])
+}
+
+model Vote {
+  id             String   @id @default(cuid())
+  battleId       String
+  voterId        String
+  selectedUserId String
+  createdAt      DateTime @default(now())
+
+  battle       Battle @relation(fields: [battleId], references: [id], onDelete: Cascade)
+  voter        User   @relation("Voter", fields: [voterId], references: [id], onDelete: Cascade)
+  selectedUser User   @relation("SelectedUser", fields: [selectedUserId], references: [id], onDelete: Restrict)
+
+  @@unique([battleId, voterId])
+  @@index([voterId, createdAt(sort: Desc)])
+  @@index([selectedUserId])
+}
+
+model ImportedProfile {
+  id                  String                @id @default(cuid())
+  externalId          String                @unique
+  profileUrl          String
+  photoUrl            String?
+  photoHash           String?
+  photoPerceptualHash String?
+  status              ImportedProfileStatus
+  lastCheckedAt       DateTime              @default(now())
+  importedAt          DateTime?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  userId              String?               @unique
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status, lastCheckedAt])
+}

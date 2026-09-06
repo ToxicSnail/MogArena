@@ -1,0 +1,62 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: mogvs
+      POSTGRES_PASSWORD: mogvs
+      POSTGRES_DB: mogvs
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mogvs -d mogvs"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    profiles: ["full"]
+    build:
+      context: .
+      target: builder
+    environment:
+      DATABASE_URL: postgresql://mogvs:mogvs@postgres:5432/mogvs?schema=public
+      LOCAL_STORAGE_PATH: /app/storage
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["npx", "prisma", "migrate", "deploy"]
+    volumes:
+      - image_storage:/app/storage
+    restart: "no"
+
+  app:
+    profiles: ["full"]
+    build: .
+    environment:
+      DATABASE_URL: postgresql://mogvs:mogvs@postgres:5432/mogvs?schema=public
+      AUTH_SECRET: ${AUTH_SECRET:-}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      STORAGE_PROVIDER: local
+      LOCAL_STORAGE_PATH: /app/storage
+      PROFILE_IMPORT_SOURCE: ${PROFILE_IMPORT_SOURCE:-fixtures}
+      PROFILE_IMPORT_ALLOWED_HOST: accounts.tsu.ru
+      PROFILE_IMPORT_IMAGE_HOSTS: accounts.tsu.ru
+      BATTLE_VOTE_TARGET: ${BATTLE_VOTE_TARGET:-20}
+    ports:
+      - "3000:3000"
+    volumes:
+      - image_storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  image_storage:

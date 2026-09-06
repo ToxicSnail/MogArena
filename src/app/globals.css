@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #f2f5f9;
+  --surface: #ffffff;
+  --foreground: #172033;
+  --muted: #68758a;
+  --border: #e2e8f0;
+  --primary: #175fe9;
+  --primary-hover: #124fc6;
+}
+
+.dark {
+  --background: #0c111c;
+  --surface: #151c29;
+  --foreground: #eef3fb;
+  --muted: #98a5b8;
+  --border: #263144;
+  --primary: #4d85f7;
+  --primary-hover: #6b99f8;
+}
+
+* { border-color: var(--border); }
+html { color-scheme: light; }
+html.dark { color-scheme: dark; }
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+}
+button, a { -webkit-tap-highlight-color: transparent; }
+::selection { background: color-mix(in srgb, var(--primary) 25%, transparent); }
