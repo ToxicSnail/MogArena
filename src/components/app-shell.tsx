@@ -49,6 +49,9 @@ export async function AppShell({ session, children }: { session: Session | null;
           </div>
         </aside>
       </div>
+      <footer className="mx-auto max-w-[1500px] px-4 pb-6 text-center text-xs text-[var(--muted)]">
+        Site designed by VKD team
+      </footer>
       <nav className="fixed inset-x-0 bottom-0 z-40 grid h-16 grid-cols-4 border-t bg-[var(--surface)] md:hidden">
         {nav.filter((item) => item.label !== "History").map(({ href, label, icon: Icon }) => <Link key={href} href={href} className="flex flex-col items-center justify-center gap-1 text-[11px] font-bold text-[var(--muted)]"><Icon className="h-5 w-5" />{label}</Link>)}
         <Link href={viewer ? `/u/${viewer.username}` : "/login"} className="flex flex-col items-center justify-center gap-1 text-[11px] font-bold text-[var(--muted)]"><UserRound className="h-5 w-5" />Profile</Link>
